@@ -417,9 +417,9 @@ function save() {
 // ── CONFIG ──
 function loadConfig() {
   return {
-    service:  localStorage.getItem('ej_service')  || '',
-    template: localStorage.getItem('ej_template') || '',
-    pubkey:   localStorage.getItem('ej_pubkey')   || '',
+    service:  localStorage.getItem('ej_service')  || 'service_2bplw7r',
+    template: localStorage.getItem('ej_template') || 't8u3xcp',
+    pubkey:   localStorage.getItem('ej_pubkey')   || '_DYALGXX2UWf8GgUm',
     webhook:  localStorage.getItem('make_webhook') || ''
   };
 }
@@ -661,6 +661,10 @@ function openModal() {
   document.getElementById('inp-template').value = cfg.template;
   document.getElementById('inp-pubkey').value   = cfg.pubkey;
   document.getElementById('inp-webhook').value  = cfg.webhook;
+  // persist defaults to localStorage so badges show OK
+  if (!localStorage.getItem('ej_service'))  localStorage.setItem('ej_service',  cfg.service);
+  if (!localStorage.getItem('ej_template')) localStorage.setItem('ej_template', cfg.template);
+  if (!localStorage.getItem('ej_pubkey'))   localStorage.setItem('ej_pubkey',   cfg.pubkey);
   updateBadges();
   document.getElementById('modalOverlay').classList.add('open');
 }
@@ -678,6 +682,17 @@ function showToast(msg, type) {
 }
 
 // ── INIT ──
+// Pre-load EmailJS credentials
+if (!localStorage.getItem('ej_service'))  localStorage.setItem('ej_service',  'service_2bplw7r');
+if (!localStorage.getItem('ej_template')) localStorage.setItem('ej_template', 't8u3xcp');
+if (!localStorage.getItem('ej_pubkey'))   localStorage.setItem('ej_pubkey',   '_DYALGXX2UWf8GgUm');
+
+// Persist default credentials to localStorage on first load
+const _cfg = loadConfig();
+if (!localStorage.getItem('ej_service'))  localStorage.setItem('ej_service',  _cfg.service);
+if (!localStorage.getItem('ej_template')) localStorage.setItem('ej_template', _cfg.template);
+if (!localStorage.getItem('ej_pubkey'))   localStorage.setItem('ej_pubkey',   _cfg.pubkey);
+
 buildTable();
 updateBadges();
 </script>
