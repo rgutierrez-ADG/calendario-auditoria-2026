@@ -148,7 +148,7 @@
 
 <div class="sync-bar" id="syncBar">
   <span>📊</span>
-  <span class="sync-msg">Datos de programación sincronizados desde el CSV en GitHub</span>
+  <span class="sync-msg">Datos de programación leídos desde el CSV del repositorio</span>
   <span class="sync-status loading" id="syncStatus">Cargando...</span>
   <button class="btn-sync" id="btnSyncSheet" onclick="syncFromCSV()">🔄 Actualizar desde CSV</button>
 </div>
@@ -210,14 +210,6 @@
     <div class="form-section">
       <h3>🔗 Make.com Webhook <span id="makeBadge" class="config-badge warn">⚠ Sin configurar</span></h3>
       <div class="form-row"><label>Webhook URL</label><input type="text" id="inp-webhook" placeholder="https://hook.make.com/..."></div>
-    </div>
-    <div class="form-section">
-      <h3>📄 URL del CSV (GitHub)</h3>
-      <div class="form-row">
-        <label>URL raw del CSV</label>
-        <input type="text" id="inp-csvurl" placeholder="https://raw.githubusercontent.com/...">
-        <div class="hint">Pegá la URL "raw" del archivo CSV en tu repositorio de GitHub.</div>
-      </div>
     </div>
     <div class="modal-actions">
       <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
@@ -413,24 +405,18 @@ function parseCSV(text){
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  SYNC DESDE CSV (GitHub raw URL)
+//  SYNC DESDE CSV (mismo directorio que el HTML)
 // ═══════════════════════════════════════════════════════════════
+// Nombre del CSV — debe estar en la misma carpeta que este HTML
+const CSV_FILENAME = 'R-SIG-AU_01_PROGRAMA_DE_AUDITORIAS_INTERNAS_26-07-21_xlsx_-_2026.csv';
+
 async function syncFromCSV(){
-  const cfg=loadConfig();
-  const csvUrl=cfg.csvurl;
-  if(!csvUrl){
-    showToast('⚙️ Configurá la URL del CSV en ⚙️ → "URL del CSV"','error');
-    openModal();
-    return;
-  }
   const btn=document.getElementById('btnSyncSheet');
   const status=document.getElementById('syncStatus');
   btn.disabled=true; status.textContent='Actualizando...'; status.className='sync-status loading';
 
   try{
-    // Add cache-bust to force fresh fetch
-    const sep=csvUrl.includes('?')?'&':'?';
-    const resp=await fetch(csvUrl+sep+'_='+Date.now(),{cache:'no-store'});
+    const resp=await fetch(CSV_FILENAME+'?_='+Date.now(),{cache:'no-store'});
     if(!resp.ok) throw new Error('HTTP '+resp.status);
     const text=await resp.text();
     const parsed=parseCSV(text);
@@ -449,7 +435,7 @@ async function syncFromCSV(){
   }catch(err){
     console.warn(err);
     status.textContent='⚠ Error al leer CSV'; status.className='sync-status error';
-    showToast('⚠️ No se pudo leer el CSV: '+err.message,'error');
+    showToast('⚠️ No se pudo leer "'+CSV_FILENAME+'": '+err.message,'error');
   }
   btn.disabled=false;
   buildTable(); updateStats();
@@ -563,8 +549,7 @@ function loadConfig(){
     service:  localStorage.getItem('ej_service')  ||'service_2bplw7r',
     template: localStorage.getItem('ej_template') ||'t8u3xcp',
     pubkey:   localStorage.getItem('ej_pubkey')   ||'_DYALGXX2UWf8GgUm',
-    webhook:  localStorage.getItem('make_webhook')||'',
-    csvurl:   localStorage.getItem('csv_url')     ||''
+    webhook:  localStorage.getItem('make_webhook')||''
   };
 }
 function saveConfig(){
@@ -572,7 +557,6 @@ function saveConfig(){
   localStorage.setItem('ej_template', document.getElementById('inp-template').value.trim());
   localStorage.setItem('ej_pubkey',   document.getElementById('inp-pubkey').value.trim());
   localStorage.setItem('make_webhook',document.getElementById('inp-webhook').value.trim());
-  localStorage.setItem('csv_url',     document.getElementById('inp-csvurl').value.trim());
   updateBadges(); closeModal(); showToast('✅ Configuración guardada','success');
 }
 function updateBadges(){
@@ -588,7 +572,6 @@ function openModal(){
   document.getElementById('inp-template').value=cfg.template;
   document.getElementById('inp-pubkey').value=cfg.pubkey;
   document.getElementById('inp-webhook').value=cfg.webhook;
-  document.getElementById('inp-csvurl').value=cfg.csvurl;
   updateBadges(); document.getElementById('modalOverlay').classList.add('open');
 }
 function closeModal(){document.getElementById('modalOverlay').classList.remove('open');}
@@ -612,28 +595,19 @@ async function init(){
   document.getElementById('loadingSubMsg').textContent='Cargando estados guardados...';
   await loadFromStorage();
   buildTable(); updateBadges();
-  document.getElementById('loadingOverlay').classList.add('hidden');
 
-  const cfg=loadConfig();
-  if(cfg.csvurl){
-    // Attempt background sync
-    document.getElementById('syncStatus').textContent='Actualizando...';
-    document.getElementById('syncStatus').className='sync-status loading';
-    if(Object.keys(csvData).length===0){
-      // No cache: show overlay
-      document.getElementById('loadingOverlay').classList.remove('hidden');
-      document.getElementById('loadingSubMsg').textContent='Leyendo CSV de GitHub...';
-      await syncFromCSV();
-      document.getElementById('loadingOverlay').classList.add('hidden');
-    } else {
-      syncFromCSV().catch(()=>{});
-    }
+  // Always sync from CSV on load
+  document.getElementById('syncStatus').textContent='Actualizando...';
+  document.getElementById('syncStatus').className='sync-status loading';
+  if(Object.keys(csvData).length===0){
+    // No cache yet: keep overlay visible until CSV loads
+    document.getElementById('loadingSubMsg').textContent='Leyendo CSV...';
+    await syncFromCSV();
+    document.getElementById('loadingOverlay').classList.add('hidden');
   } else {
-    document.getElementById('syncStatus').textContent='⚙️ Configurá la URL del CSV';
-    document.getElementById('syncStatus').className='sync-status loading';
-    if(Object.keys(csvData).length===0){
-      showToast('👋 Bienvenido. Configurá la URL del CSV en ⚙️ para sincronizar.','');
-    }
+    // Has cache: show app immediately, refresh in background
+    document.getElementById('loadingOverlay').classList.add('hidden');
+    syncFromCSV().catch(()=>{});
   }
 }
 init();
